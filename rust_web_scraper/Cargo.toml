@@ -1,11 +1,8 @@
-workspace = { members = ["rust_web_scraper"] }
 [package]
-name = "LibTASMaker"
+name = "rust_web_scraper"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-fstrings = "0.2.3"
-reqwest = { version = "0.11.23", features = ["blocking"] }
