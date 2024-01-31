@@ -12,10 +12,14 @@ impl Instruction {
             for inst in instructlen {
                 let res = inst[1..].parse::<u16>();
                 if res.is_ok() {
-                    for _ in 0..res.unwrap() {
-                        let mut k = String::new();
-                        inst[0..=0].clone_into(&mut k);
-                        expanded.push(k);
+                    if inst.eq("F2") {
+                        expanded.push("F2".to_string());
+                    } else {
+                        for _ in 0..res.unwrap() {
+                            let mut k = String::new();
+                            inst[0..=0].clone_into(&mut k);
+                            expanded.push(k);
+                        }
                     }
                 } else {
                     expanded.push(inst.to_string());
@@ -134,5 +138,6 @@ fn main() {
             }
         }
     }
-    let inst = Instruction::new("U1 R10 D1 R1 U1 R3 U1 L6 U1 L1 D14".to_string());
+    let inst = Instruction::new("F2".to_string());
+    println!("{:?}", inst.instruct);
 }
