@@ -1,8 +1,22 @@
 #[macro_use]
 extern crate fstrings;
-#[derive(Debug)]
+
+use std::fmt::{Display, Formatter};
+
 struct Instruction {
-    instruct: Vec<String>
+    instruct: Vec<String>,
+    frames: Vec<Vec<String>>,
+    framecount: usize,
+}
+impl Display for Instruction {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let mut str = String::new();
+        for i in &self.frames {
+            let k = i.join(" ");
+            str = f!("{str} |{k}|");
+        }
+        write!(f, "{}", str[1..].to_string())
+    }
 }
 impl Instruction {
     fn new(str: String) -> Instruction {
@@ -28,8 +42,46 @@ impl Instruction {
             return expanded;
         };
         let expanded = expand();
+        let frames = || -> Vec<Vec<String>> {
+            let mut frames: Vec<Vec<String>> = Vec::new();
+            let mut frameind = 0;
+            let mut allowed = 2;
+            frames.push(Vec::new());
+            for i in &expanded {
+                if i == "W" {
+                    allowed = 2 - frames[frameind].len();
+                    frames[frameind].push(i.clone());
+                    frameind+=1;
+                    frames.push(Vec::new());
+                } else if i.len() == 1 {
+                    while frames[frameind].len() >= allowed {
+                        allowed = 2 - frames[frameind].len();
+                        frameind += 1;
+                        frames.push(Vec::new());
+                    }
+                    frames[frameind].push(i.clone());
+                } else {
+                    if frames[frameind].len() > 0 {
+                        frameind += 1;
+                        frames.push(Vec::new());
+                    }
+                    let str: &str = i;
+                    match str {
+                        "Reset" => {
+                            // println!("Hello");
+                        }
+                        &_ => {}
+                    }
+                }
+            }
+            return frames;
+        };
+        let frame_vec = frames();
+        let frame_vec_len = frame_vec.len();
         return Instruction {
-            instruct: expanded
+            instruct: expanded,
+            frames: frame_vec,
+            framecount: frame_vec_len
         };
     }
 }
@@ -82,16 +134,18 @@ impl DataFrame {
                 self.vec[index][4] = String::new();
             }
             else {
+                let mut modified = false;
                 if !i[0].is_empty() {
                     last = i[0].clone();
                 }
                 if !i[1].is_empty() || i[0].is_empty() {
                     if !i[1].eq("Bonus") {
                         self.vec[index][0] = last.clone() + " (" + &*i[1].clone() + ")";
+                        modified = true;
                     }
                 }
-                if index+1 != self.vec.len() {
-                    if self.vec[index + 1][0].is_empty() && !self.vec[index].is_empty() {
+                if index+1 != self.vec.len() && !modified {
+                    if self.vec[index + 1][0].is_empty() && !self.vec[index][0].is_empty() {
                         self.vec[index][0] = i[0].clone() + " (Win)";
                     }
                 }
@@ -134,10 +188,11 @@ fn main() {
         for i in opt.unwrap() {
             let v = k.get_moveset_str(i.as_str());
             if v.is_some() {
-                println!("{}: {}", i, v.unwrap());
+                let k = Instruction::new(v.unwrap());
+                println!("{}: {}", i, k.framecount);
             }
         }
     }
-    let inst = Instruction::new("F2".to_string());
-    println!("{:?}", inst.instruct);
+    // let k = Instruction::new("U4 R3 U2 L1 U1 R1 D4 L3 U1 L1 D6 U4 R5 U4 L1 U1 W3 R4 L4 D6 L1 D2 L7 U3 D1 W2 D2 W2 R2 W2 R1 U1 W2 R2 W2 R2 W1 R3 U7 W2 R2 D3 U3 L5 D7 R7 D1 R1 U2 D1 R2 U2 L5 U3 L2 U2 R2 D4 U4 L6 D10 L1 D3 L4 D1 R5 D1 R1 U2 L1 U1 R2 L3 U2 L1 U4 Reset".to_string());
+    // println!("{}", k);
 }
