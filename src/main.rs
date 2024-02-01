@@ -19,7 +19,7 @@ impl Display for Instruction {
     }
 }
 impl Instruction {
-    fn new(str: String) -> Instruction {
+    fn new(str: String, fast: bool) -> Instruction {
         let expand = || -> Vec<String> {
             let mut expanded: Vec<String> = Vec::new();
             let instructlen = str.split(" ");
@@ -93,9 +93,9 @@ impl DataFrame {
         let key = key_p.to_string();
         let mut vec: Vec<String> = Vec::new();
         let mut index = 0;
-        for i in &self.vec[0] {
+        for i in &self.vec[1] {
             if i.eq(&key) {
-                let allbut = &self.vec[1..];
+                let allbut = &self.vec[2..];
                 for j in allbut{
                     vec.push(j[index].clone());
                 }
@@ -108,7 +108,7 @@ impl DataFrame {
     fn get_moveset_str(&self, level: &str) -> Option<String> {
         let lvl = level.to_string();
         let names = self.get_values("Individual Levels Name")?;
-        let movesets = self.get_values("Moveset")?;
+        let movesets = self.get_values("Individual Levels Moveset")?;
         for ind in 0..names.len() {
             let name = names[ind].clone();
             if lvl.eq(&name) {
@@ -124,7 +124,14 @@ impl DataFrame {
     fn clean(&mut self) {
         let mut last = String::new();
         let mut cleanall = false;
-        for index in 1..self.vec.len() {
+        let mut last_header = String::new();
+        for a in 0..self.vec[0].len() {
+            if !self.vec[0][a].is_empty() {
+                last_header = self.vec[0][a].clone();
+            }
+            self.vec[1][a] = last_header.clone() + " " + &*self.vec[1][a].clone();
+        }
+        for index in 2..self.vec.len() {
             let i = self.vec[index].clone();
             if cleanall {
                 self.vec[index][0] = String::new();
@@ -140,7 +147,9 @@ impl DataFrame {
                 }
                 if !i[1].is_empty() || i[0].is_empty() {
                     if !i[1].eq("Bonus") {
-                        self.vec[index][0] = last.clone() + " (" + &*i[1].clone() + ")";
+                        let clonedlast = last.clone();
+                        let clonedi1 = i[1].clone();
+                        self.vec[index][0] = f!("{clonedlast} ({clonedi1})");
                         modified = true;
                     }
                 }
@@ -159,36 +168,36 @@ impl DataFrame {
 fn scrape_url(url: String) -> DataFrame {
     let response = reqwest::blocking::get(url);
     let html_content = response.unwrap().text().unwrap();
-    let splitterfirst = "\"\n\"";
-    let splitter2nd = "\",\"";
+    let splitterfirst = "\r\n";
+    let splitter2nd = ",";
     let n = html_content.split(splitterfirst);
     let mut vec:Vec<Vec<String>> = Vec::new();
     for i in n {
         let mut newvec : Vec<String> = Vec::new();
         for j in i.split(splitter2nd) {
-            newvec.push(j.to_string());
+            newvec.push(j.to_string().replace("\n", ""));
         }
         vec.push(newvec);
     }
-    let lastone = vec.len()-1;
-    let lasttwo = vec[lastone].len()-1;
-    vec[0][0] = vec[0][0][1..].to_string();
-    vec[lastone][lasttwo] = vec[lastone][lasttwo][0..vec[lastone][lasttwo].len()-1].to_string();
 
     return DataFrame {vec};
 }
 fn main() {
+    //Default Before: MOVETONEXT
+    //Default After: ENTERLEVEL
+
     let sheet_id = "1nICIicSDPCreqlegC0uQs0_tUveeruKaAxRKV2tUhYI";
-    let level_movesets = "TAS%20Info";
-    let doc_url = f!("https://docs.google.com/spreadsheets/d/{sheet_id}/gviz/tq?tqx=out:csv&sheet={level_movesets}");
+    let sheet_gid = "1044476473";
+    let doc_url = f!("https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv&id=1nICIicSDPCreqlegC0uQs0_tUveeruKaAxRKV2tUhYI&gid={sheet_gid}");
     let mut k = scrape_url(doc_url.clone());
     k.clean();
+    println!("{:?}", k.vec);
     let opt = k.get_values("Map Movement and Routing To");
     if opt.is_some() {
         for i in opt.unwrap() {
             let v = k.get_moveset_str(i.as_str());
             if v.is_some() {
-                let k = Instruction::new(v.unwrap());
+                let k = Instruction::new(v.unwrap(), false);
                 println!("{}: {}", i, k.framecount);
             }
         }
